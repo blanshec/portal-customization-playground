@@ -4,12 +4,11 @@ window.addEventListener('load', function () {
    const currentUserName = localStorage.getItem('userName', '{{current_user.phone}}').replace("&#39;","'")
    const unparsedEmail = localStorage.getItem('userEmail', '{{current_user.email}}');
    const currentUserJobTitle = localStorage.getItem('userJobTitle', '{{current_user.email}}');
-   let currentUserPhone;
    //LOCAL STORAGE COLLECT END
 
    const test = false;
 
-   const regexEmail = /\@(.*)/i;
+   const regexEmail = /@(.*)/i;
    const currentUserEmail = unparsedEmail.replace(regexEmail, '@squad.ua');
 
    const serviceItems = ['31', '33', '53', '96', '110', '116', '120', '169', '165', '170', '171', '174', '183', '186', '194', '195', '201'];
@@ -157,7 +156,7 @@ window.addEventListener('load', function () {
          inputFlat: 'requested_item_values[201][requested_item_value_attributes][cf_text_162765353657592_270753]'
       }
    };
-   const buisnessCardTickets = ['116', '194'];
+   const businessCardTickets = ['116', '194'];
    const possibleDropdownOptions = ['адрес', 'Адресна доставка', 'Address Delivery', 'Address delivery'];
 
    const catalogueItemNumber = window.location.pathname.replace(/^\D+/g, '');
@@ -178,7 +177,7 @@ window.addEventListener('load', function () {
 
    if (serviceItems.includes(catalogueItemNumber)) {
       prepareDropdown(dropdownName, handleAddressDropdown);
-      if (buisnessCardTickets.includes(catalogueItemNumber)) {
+      if (businessCardTickets.includes(catalogueItemNumber)) {
          substituteCardInput(catalogueItemNumber);
          prepareDropdown(dropdownCardName, handleCardDropdown);
       }
@@ -222,14 +221,12 @@ window.addEventListener('load', function () {
                   possibleTeammateName = selector.innerText.split('<')[0];
                   const testFlag = '&test=true';
 
-                  if (inputMateId.value !== (undefined || null || '')) {
+                  if (inputMateId.value !== '') {
                      fetch(`https://freshservicecounter.ringteam.com/getuserdata?id=${inputMateId.value}${test ? testFlag : ''}`)
                          .then((response) => {
                             if (response.status === 200) {
-                               console.log('got response');
                                return response.json();
                             } else if (response.status === 404) {
-                               console.log(response);
                                throw new Error('User is not found in the Freshservice');
                             }
                          })
@@ -240,13 +237,12 @@ window.addEventListener('load', function () {
                             } else {
                                requestedMateName = data.work_phone_number;
                             }
-                            console.log(requestedMateName);
                          })
                          .then(() => {
                             clearInterval(selectorTimer);
                          })
                          .catch((err) => {
-                            console.log(err);
+                            console.log('checkSelector Error:', err);
                             throw err;
                          });
                   }
@@ -256,8 +252,6 @@ window.addEventListener('load', function () {
       }
 
       async function handleAddressDropdown(_event) {
-         let phoneHolder = '';
-
          const testTickets = ['33', '116'];
          const checkRequestForTest = testTickets.includes(catalogueItemNumber)
              ? 'oksana.andriianova@ringteam.com'
@@ -287,7 +281,7 @@ window.addEventListener('load', function () {
                      document.getElementsByName(elementSet.inputHouse)[0].value = userBambooData.house;
                      document.getElementsByName(elementSet.inputFlat)[0].value = userBambooData.flat;
 
-                     if (buisnessCardTickets.includes(catalogueItemNumber)) {
+                     if (businessCardTickets.includes(catalogueItemNumber)) {
                         prepareInfoBlock(_event.target.parentNode.parentNode);
                      }
                      spanElement.style.color = 'green';
@@ -301,7 +295,7 @@ window.addEventListener('load', function () {
                   spanElement.innerHTML = ' ';
                }
             });
-         } else if (buisnessCardTickets.includes(catalogueItemNumber)) {
+         } else if (businessCardTickets.includes(catalogueItemNumber)) {
             const infoSpan = document.createElement('span');
             infoSpan.style.fontSize = '1.2rem';
             infoSpan.style.color = 'gray';
@@ -309,14 +303,13 @@ window.addEventListener('load', function () {
             const referenceBlock = _event.target.parentNode.parentNode.getElementsByClassName('dropdown custom_dropdown field ')[1];
             _event.target.parentNode.parentNode.insertBefore(infoSpan, referenceBlock);
             const userBambooData = await getBambooData(possibleTeammateEmail === undefined || null ? checkRequestForTest : possibleTeammateEmail);
-            phoneHolder = userBambooData.phone;
 
-            prepareInfoBlock(_event.target.parentNode.parentNode);
+            prepareInfoBlock(_event.target.parentNode.parentNode, userBambooData.phone);
             infoSpan.innerText = '';
          }
       }
 
-      function prepareInfoBlock(parentBlock) {
+      function prepareInfoBlock(parentBlock, phoneNumber) {
          const infoBlock = document.createElement('div');
          const textBlock = document.createElement('p');
          const heading = document.createElement('h4');
@@ -326,7 +319,7 @@ window.addEventListener('load', function () {
          heading.innerText = `Please check information below \n`;
          textBlock.innerText = `${parsedName} \n ${
              jobTitle !== undefined ? jobTitle.split(',')[0] : currentUserJobTitle.split(',')[0]
-         } \n ${phoneHolder} \n ${
+         } \n ${phoneNumber} \n ${
              possibleTeammateEmail !== undefined ? possibleTeammateEmail.replace(regexEmail, '@squad.ua') : currentUserEmail
          }`;
          const referenceBlock = parentBlock.getElementsByClassName('dropdown custom_dropdown field ')[1];
@@ -340,14 +333,13 @@ window.addEventListener('load', function () {
       return fetch(`https://freshservicecounter.ringteam.com/getbamboodata?email=${_requested}`)
           .then((response) => {
              if (response.status === 200) {
-                console.log('got response');
                 return response.json();
              } else if (response.status === 404) {
                 throw new Error('We can`t find your address information. Please, add it to your profile');
              }
           })
           .then((data) => {
-             console.log('parsing data');
+             console.log('getBambooData: parsing data', data);
              const dataMap = ['region', 'city', 'street', 'house', 'flat', 'bambooId', 'phoneNumber'];
              const parsedData = Object.keys(data).reduce(
                  (acc, key, i) => ({
@@ -356,8 +348,6 @@ window.addEventListener('load', function () {
                  }),
                  {}
              );
-             currentUserPhone = parsedData.phoneNumber;
-             phoneHolder = parsedData.phoneNumber;
              return {
                 name: requestedMateName !== undefined ? requestedMateName : currentUserName,
                 city: parsedData.city,
@@ -368,7 +358,7 @@ window.addEventListener('load', function () {
              };
           })
           .catch((err) => {
-             console.log(err);
+             console.log('getBambooData Error:', err);
           });
    }
 });
@@ -398,7 +388,6 @@ function createRadioImageElem(imageLink, value, realInput) {
    option.style.width = '480px';
    imageRadioButton.type = 'radio';
    imageRadioButton.value = value;
-   // imageRadioButton.style.visibility = 'hidden';
    imageRadioButtonImg.src = imageLink;
    imageRadioButtonImg.style.cursor = 'pointer';
 
